@@ -86,7 +86,22 @@ def depthFirstSearch(problem):
     print "Is the start a goal?", problem.isGoalState(problem.getStartState())
     print "Start's successors:", problem.getSuccessors(problem.getStartState())
     """
-    "*** YOUR CODE HERE ***"
+    print "Start:", problem.getStartState()
+    print "Is the start a goal?", problem.isGoalState(problem.getStartState())
+    print "Start's successors:", problem.getSuccessors(problem.getStartState())
+
+
+    def dfs(position, actions, visited):
+    	if problem.isGoalState(position):
+    		return actions
+    	else:
+    		for node in problem.getSuccessors(position):
+    			pos, action, cost = node;
+    			if pos not in visited:
+    				return dfs(pos, actions.append(action), visited.add(position))
+
+    return dfs(problem.getStartState(), [], set())
+
     util.raiseNotDefined()
 
 def breadthFirstSearch(problem):
