@@ -90,17 +90,36 @@ def depthFirstSearch(problem):
     print "Is the start a goal?", problem.isGoalState(problem.getStartState())
     print "Start's successors:", problem.getSuccessors(problem.getStartState())
 
-
+    '''
     def dfs(position, actions, visited):
-    	if problem.isGoalState(position):
-    		return actions
+        if problem.isGoalState(position):
+            return actions
     	else:
-    		for node in problem.getSuccessors(position):
-    			pos, action, cost = node;
-    			if pos not in visited:
-    				return dfs(pos, actions.append(action), visited.add(position))
+            visited.add(position)
+    	    for node in problem.getSuccessors(position):
+    	        pos, action, cost = node;
+                if pos not in visited:
+                    return dfs(pos, actions + [action], visited)
 
     return dfs(problem.getStartState(), [], set())
+    '''
+
+    stack = [[], problem.getStartState()]
+    visited = set()
+
+    while stack:
+        actions, node = stack.pop()
+        if problem.isGoalState(node):
+            return actions
+        
+        print node
+        visited.add(node)
+        for posisiton, action, cost in problem.getSuccessors(node):
+            if position not in visited:
+                stack.push((actions + [action], position))
+
+    print "didn't find path"
+    return False
 
     util.raiseNotDefined()
 
