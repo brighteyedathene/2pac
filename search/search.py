@@ -128,18 +128,19 @@ def breadthFirstSearch(problem):
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
     pqueue = util.PriorityQueue()
-    pqueue.push(([], problem.getStartState()), 0)
-    visited = set()
-
+    pqueue.push(([], problem.getStartState()), 1)
+    visited = set(problem.getStartState())
+ 
     while pqueue:
         actions, node = pqueue.pop()
         if problem.isGoalState(node):
             return actions
 
-        visited.add(node)
+        
         for position, action, cost in problem.getSuccessors(node):
             if position not in visited:
-                pqueue.update((actions + [action], position), cost)
+                visited.add(position)
+                pqueue.updateIgnoreActions((actions + [action], position), cost)
 
     print "didn't find path"
     return False
@@ -158,6 +159,27 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     "*** YOUR CODE HERE ***"
     util.raiseNotDefined()
 
+'''
+I added this function for convenience!
+'''
+def updateIgnoreActions(self, (actions, item), priority):
+    # The same as update() for PriotityQueue EXCEPT:
+    #   item must be a tuple: (list of actions, item)
+    # [actions] will be ignored when comparing items
+
+    for index, (ppp, cc, ii) in enumerate(self.heap):
+        import pdb; pdb.set_trace()
+        if ii == item:
+            if ppp <= priority:
+                break
+            del self.heap[index]
+            self.heap.append((priority, cc, (actions, item)))
+            heapq.heapify(self.heap)
+            break
+    else:
+        self.push(item, priority)
+
+util.PriorityQueue.updateIgnoreActions = updateIgnoreActions
 
 # Abbreviations
 bfs = breadthFirstSearch
