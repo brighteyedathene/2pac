@@ -115,7 +115,10 @@ def breadthFirstSearch(problem):
 
         visited.add(node)
         for position, action, cost in problem.getSuccessors(node):
-            if position not in visited:
+            if (
+                    position not in visited and
+                    position not in [snd for fst, snd in queue]
+               ):
                 queue.insert(0, (actions + [action], position))
 
     print "didn't find path"
@@ -124,7 +127,23 @@ def breadthFirstSearch(problem):
 
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
-    "*** YOUR CODE HERE ***"
+    pqueue = util.PriorityQueue()
+    pqueue.push(([], problem.getStartState()), 0)
+    visited = set()
+
+    while pqueue:
+        actions, node = pqueue.pop()
+        if problem.isGoalState(node):
+            return actions
+
+        visited.add(node)
+        for position, action, cost in problem.getSuccessors(node):
+            if position not in visited:
+                pqueue.update((actions + [action], position), cost)
+
+    print "didn't find path"
+    return False
+    
     util.raiseNotDefined()
 
 def nullHeuristic(state, problem=None):
