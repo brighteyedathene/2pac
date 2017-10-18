@@ -86,25 +86,8 @@ def depthFirstSearch(problem):
     print "Is the start a goal?", problem.isGoalState(problem.getStartState())
     print "Start's successors:", problem.getSuccessors(problem.getStartState())
     """
-    print "Start:", problem.getStartState()
-    print "Is the start a goal?", problem.isGoalState(problem.getStartState())
-    print "Start's successors:", problem.getSuccessors(problem.getStartState())
 
-    '''
-    def dfs(position, actions, visited):
-        if problem.isGoalState(position):
-            return actions
-    	else:
-            visited.add(position)
-    	    for node in problem.getSuccessors(position):
-    	        pos, action, cost = node;
-                if pos not in visited:
-                    return dfs(pos, actions + [action], visited)
-
-    return dfs(problem.getStartState(), [], set())
-    '''
-
-    stack = [[], problem.getStartState()]
+    stack = [([], problem.getStartState())]
     visited = set()
 
     while stack:
@@ -112,21 +95,32 @@ def depthFirstSearch(problem):
         if problem.isGoalState(node):
             return actions
         
-        print node
         visited.add(node)
-        for posisiton, action, cost in problem.getSuccessors(node):
+        for position, action, cost in problem.getSuccessors(node):
             if position not in visited:
-                stack.push((actions + [action], position))
+                stack.append((actions + [action], position))
 
     print "didn't find path"
     return False
 
-    util.raiseNotDefined()
-
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    queue = [([], problem.getStartState())]
+    visited = set()
+
+    while queue:
+        actions, node = queue.pop()
+        if problem.isGoalState(node):
+            return actions
+
+        visited.add(node)
+        for position, action, cost in problem.getSuccessors(node):
+            if position not in visited:
+                queue.insert(0, (actions + [action], position))
+
+    print "didn't find path"
+    return False
+
 
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
