@@ -148,7 +148,6 @@ def uniformCostSearch(problem):
     print "didn't find path"
     return False
     
-    util.raiseNotDefined()
 
 def nullHeuristic(state, problem=None):
     """
@@ -159,11 +158,39 @@ def nullHeuristic(state, problem=None):
 
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    pqueue = util.PriorityQueue()
+    pqueue.push(([], problem.getStartState()), 0)
+    visited = set(problem.getStartState())
+
+    while pqueue:
+        actions, node = pqueue.pop()
+        if problem.isGoalState(node):
+            return actions
+
+        visited.add(node)
+        for position, action, cost in problem.getSuccessors(node):
+            if position not in visited:
+                
+                new_actions = actions + [action]
+                new_cost = problem.getCostOfActions(actions) + cost + heuristic(position, problem)
+                pqueue.updateIgnoreActions((new_actions, position), new_cost)
+
+    print "didn't find path"
+    return False
+
+
 
 '''
 I added this function for convenience!
+
+The normal update() for PriorityQueue was awkward to use with 
+my ([action], position) tuple
+
+It would add a new element for like nodes with different paths
+
+This function expects a tuple (actions, item) and only uses
+the second value during comparison.
+    
 '''
 def updateIgnoreActions(self, (actions, item), priority):
     # The same as update() for PriotityQueue EXCEPT:
