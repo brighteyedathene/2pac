@@ -18,6 +18,7 @@ Pacman agents (in searchAgents.py).
 """
 
 import util
+import heapq # required for uppdateIgnoreActions()
 
 class SearchProblem:
     """
@@ -128,7 +129,7 @@ def breadthFirstSearch(problem):
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
     pqueue = util.PriorityQueue()
-    pqueue.push(([], problem.getStartState()), 1)
+    pqueue.push(([], problem.getStartState()), 0)
     visited = set(problem.getStartState())
  
     while pqueue:
@@ -136,11 +137,13 @@ def uniformCostSearch(problem):
         if problem.isGoalState(node):
             return actions
 
-        
+        visited.add(node)
         for position, action, cost in problem.getSuccessors(node):
             if position not in visited:
-                visited.add(position)
-                pqueue.updateIgnoreActions((actions + [action], position), cost)
+                
+                new_actions = actions + [action]
+                new_cost = problem.getCostOfActions(actions) + cost
+                pqueue.updateIgnoreActions((new_actions, position), new_cost)
 
     print "didn't find path"
     return False
@@ -167,8 +170,7 @@ def updateIgnoreActions(self, (actions, item), priority):
     #   item must be a tuple: (list of actions, item)
     # [actions] will be ignored when comparing items
 
-    for index, (ppp, cc, ii) in enumerate(self.heap):
-        import pdb; pdb.set_trace()
+    for index, (ppp, cc, (aa, ii)) in enumerate(self.heap):
         if ii == item:
             if ppp <= priority:
                 break
@@ -177,7 +179,7 @@ def updateIgnoreActions(self, (actions, item), priority):
             heapq.heapify(self.heap)
             break
     else:
-        self.push(item, priority)
+        self.push((actions,item), priority)
 
 util.PriorityQueue.updateIgnoreActions = updateIgnoreActions
 
