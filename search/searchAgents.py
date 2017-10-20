@@ -34,12 +34,14 @@ description for details.
 Good luck and happy searching!
 """
 
+from math import sqrt
 from game import Directions
 from game import Agent
 from game import Actions
 import util
 import time
 import search
+
 
 class GoWestAgent(Agent):
     "An agent that goes West until it can't."
@@ -369,11 +371,46 @@ def cornersHeuristic(state, problem):
     shortest path from the state to a goal of the problem; i.e.  it should be
     admissible (as well as consistent).
     """
+
     corners = problem.corners # These are the corner coordinates
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
-    "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    def eulerDistance(start, end):
+        x1, y1 = start
+        x2, y2 = end
+        x = x2 - x1
+        y = y2 - y1
+
+        return sqrt(x*x + y*y)
+
+    def findClosestUnvisitedCorner(position, visitedCorners, distanceFunc=eulerDistance):
+
+        currentMin = float('inf')
+        closestCornerIndex = None
+        for i, corner in enumerate(corners):
+            if visitedCorners[i]:
+                continue
+
+            distance = distanceFunc(position, corner)
+            if distance < currentMin:
+                closestCornerIndex = i
+                currentMin = distance
+
+        return closestCornerIndex, currentMin
+
+    h = 0
+
+    visitedTuple, position = state
+    visitedList = [visitedTuple[i] for i in range(4)]
+
+    virtualPosition = position
+    while False in visitedList:
+        cornerIndex, distance = findClosestUnvisitedCorner(virtualPosition, visitedList, util.manhattanDistance)
+        visitedList[cornerIndex] = True
+        h += distance
+        virtualPosition = corners[cornerIndex]
+
+    return h # Default to trivial solution
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -465,9 +502,116 @@ def foodHeuristic(state, problem):
     Subsequent calls to this heuristic can access
     problem.heuristicInfo['wallCount']
     """
+
+
+    """ Helper Functions """
+    '''
+    creates a dictionary of food positions and distances between them
+    '''
+    def createFoodLookupTable(foodPositions):
+        fdl = {}
+        for p in foodPositions:
+            fdl[p] = []
+            for q in foodPositions:
+                if p == q:
+                    continue
+
+                distance = util.manhattanDistance(p, q)
+                fdl[p].append((distance, q))
+            fdl[p].sort()
+        problem.heuristicInfo["foodDistanceLookup"] = fdl
+        #print "fdl", fdl
+
+
+    def prim(position, foodPositions):
+
+        # begin with the closest food
+        distance, closest = findclosestFood(position, foodPositions)
+        hcost = distance
+        visited = [closest]
+
+        while len(visited) < len(foodPositions):
+            # find the closest unvisited food
+            distance, closest = findClosestUnvisitedFood(visited)
+            visited.append(closest)
+            hcost += distance
+
+        return hcost
+
+    # Finds the closest food to an arbitrary point
+    def findclosestFood(position, foodPositions):
+        closest = None
+        minDistance = float('inf')
+        for food in foodPositions:
+            distance = util.manhattanDistance(position, food)
+            if distance < minDistance:
+                closest = food
+                minDistance = distance
+
+        return minDistance, closest
+
+
+    # Finds the closest food using the foodDistanceLookup
+    def findClosestUnvisitedFood(visited):
+        fdl = problem.heuristicInfo.get("foodDistanceLookup")
+        minDistance = float('inf')
+        closest = None
+
+        # p: start position
+        # q: destination position
+        for p in visited:
+            for distance, q in fdl[p]:
+                if q in visited:
+                    continue
+                if distance < minDistance:
+                    minDistance = distance
+                    closest = q
+                    #break # fdl[p] is sorted in ascending order
+                break
+        return minDistance, closest
+
+
+    def getFoodCount():
+        foodCount = 0
+        for column in range(len(foodGrid.data)):
+            for row in range(len(foodGrid.data[column])):
+                if foodGrid.data[column][row]:
+                    foodCount += 1
+
+        return foodCount
+
+    
+
     position, foodGrid = state
-    "*** YOUR CODE HERE ***"
-    return 0
+    foodCount = getFoodCount()
+    if foodCount < 1:
+        return 0
+
+    foodPositions = problem.heuristicInfo.get("foodPositions")
+    if not foodPositions:
+        foodPositions = []
+        for column in range(len(foodGrid.data)):
+            for row in range(len(foodGrid.data[column])):
+                if foodGrid.data[column][row]:
+                    foodPositions.append((column, row))
+
+
+    fdl = problem.heuristicInfo.get("foodDistanceLookup")
+    if not fdl:
+        createFoodLookupTable(foodPositions)
+
+    #import pdb; pdb.set_trace()
+
+
+    primcost = prim(position, foodPositions)
+    foodCount = getFoodCount()
+    #for fpos in foodPositions:
+
+
+
+    return primcost
+
+
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -497,8 +641,7 @@ class ClosestDotSearchAgent(SearchAgent):
         walls = gameState.getWalls()
         problem = AnyFoodSearchProblem(gameState)
 
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        actions = search.breadthFirstSearch(problem)
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -532,9 +675,11 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         complete the problem definition.
         """
         x,y = state
+        if self.food[x][y]:
+            return True
+        else:
+            return False
 
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
 
 def mazeDistance(point1, point2, gameState):
     """
