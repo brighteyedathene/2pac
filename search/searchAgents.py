@@ -513,16 +513,16 @@ def foodHeuristic(state, problem):
     def foodToFoodTripCost(position, foodPositions):
         """This is my final heuristic function
         
-        Starting at (position), this function carves
-        a path through all food tiles, choosing the
-        closest unvisited tile every time.
+        Starting at pacman's position (position), this 
+        function carves a path through all food tiles, 
+        choosing the closest unvisited tile every time.
 
         For each step, the manhattam distance is added
         to a running total, (hcost).
 
         In order to keep the heuristic cost from getting
-        too high, the length of the largest move will be 
-        subtracted from (hcost) at the end.
+        too high, the length of the largest move (freeMove)
+        will be subtracted from (hcost) at the end.
         """
         subgoals = list(foodPositions)
         hcost = 0 # running total cost
