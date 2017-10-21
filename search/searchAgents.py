@@ -405,12 +405,14 @@ def cornersHeuristic(state, problem):
 
     virtualPosition = position
     while False in visitedList:
-        cornerIndex, distance = findClosestUnvisitedCorner(virtualPosition, visitedList, util.manhattanDistance)
+        cornerIndex, distance = findClosestUnvisitedCorner(virtualPosition, 
+                                                           visitedList, 
+                                                           util.manhattanDistance)
         visitedList[cornerIndex] = True
         h += distance
         virtualPosition = corners[cornerIndex]
 
-    return h # Default to trivial solution
+    return h
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -433,6 +435,7 @@ class FoodSearchProblem:
         self.startingGameState = startingGameState
         self._expanded = 0 # DO NOT CHANGE
         self.heuristicInfo = {} # A dictionary for the heuristic to store information
+        #import pdb; pdb.set_trace()
 
     def getStartState(self):
         return self.start
@@ -504,42 +507,46 @@ def foodHeuristic(state, problem):
     """
 
 
-    """ Helper Functions """
-    '''
-    creates a dictionary of food positions and distances between them
-    '''
-    def createFoodLookupTable(foodPositions):
-        fdl = {}
-        for p in foodPositions:
-            fdl[p] = []
-            for q in foodPositions:
-                if p == q:
-                    continue
-
-                distance = util.manhattanDistance(p, q)
-                fdl[p].append((distance, q))
-            fdl[p].sort()
-        problem.heuristicInfo["foodDistanceLookup"] = fdl
-        #print "fdl", fdl
+    """ HELPER FUNCTIONS """
 
 
-    def prim(position, foodPositions):
+    def foodToFoodTripCost(position, foodPositions):
+        """This is my final heuristic function
+        
+        Starting at (position), this function carves
+        a path through all food tiles, choosing the
+        closest unvisited tile every time.
 
-        # begin with the closest food
-        distance, closest = findclosestFood(position, foodPositions)
-        hcost = distance
-        visited = [closest]
+        For each step, the manhattam distance is added
+        to a running total, (hcost).
 
-        while len(visited) < len(foodPositions):
-            # find the closest unvisited food
-            distance, closest = findClosestUnvisitedFood(visited)
-            visited.append(closest)
+        In order to keep the heuristic cost from getting
+        too high, the length of the largest move will be 
+        subtracted from (hcost) at the end.
+        """
+        subgoals = list(foodPositions)
+        hcost = 0 # running total cost
+        freeMove = 0 # i will allow the largest move for free...
+
+        #... unless there is only one food tile
+        if len(subgoals) < 2:
+            return util.manhattanDistance(position, subgoals[0])
+
+        while subgoals:
+            distance, closest = findClosestFood(position, subgoals)
             hcost += distance
+            position = closest
+            subgoals.remove(closest)
+            if freeMove < distance:
+                freeMove = distance
 
+        hcost -= freeMove
         return hcost
 
-    # Finds the closest food to an arbitrary point
-    def findclosestFood(position, foodPositions):
+
+    def findClosestFood(position, foodPositions):
+        """Finds the closest food to an arbitrary point
+        """
         closest = None
         minDistance = float('inf')
         for food in foodPositions:
@@ -551,65 +558,77 @@ def foodHeuristic(state, problem):
         return minDistance, closest
 
 
-    # Finds the closest food using the foodDistanceLookup
-    def findClosestUnvisitedFood(visited):
-        fdl = problem.heuristicInfo.get("foodDistanceLookup")
-        minDistance = float('inf')
-        closest = None
+    def findFarthestFood(position, foodPositions):
+        """Finds farthest food from an arbitrary point
+        """
+        farthest = None
+        maxDistance = 0
+        for food in foodPositions:
+            distance = util.manhattanDistance(position, food)
+            if distance > maxDistance:
+                farthest = food
+                maxDistance = distance
 
-        # p: start position
-        # q: destination position
-        for p in visited:
-            for distance, q in fdl[p]:
-                if q in visited:
-                    continue
-                if distance < minDistance:
-                    minDistance = distance
-                    closest = q
-                    #break # fdl[p] is sorted in ascending order
-                break
-        return minDistance, closest
+        return maxDistance, farthest
 
 
-    def getFoodCount():
-        foodCount = 0
-        for column in range(len(foodGrid.data)):
-            for row in range(len(foodGrid.data[column])):
-                if foodGrid.data[column][row]:
-                    foodCount += 1
+    def isBlockedByWall(p, q):
+        """I left this function in becuse I like it.
+    
+        It was intended to be used in conjunction with another
+        function, but it didn't procude very good results.
+    
+        Returns True if there is a wall blocking the straight line 
+        between p and q
+        Interpolates between p and q, and checks the nearest tile 
+        for walls at every step
+        """
+        if p==q:
+            return False
+        x1, y1 = p
+        x2, y2 = q
 
-        return foodCount
+        dx, dy = x2 - x1, y2 - y1
+        bigger = max(abs(dx), abs(dy))
+        stepx = dx/bigger
+        stepy = dy/bigger
+        # check for wall tiles in a straight line from p to q
+        # starting with p(x1, y1)...
+        while x1 != x2 or y1 != y2 :
+            x1 += stepx
+            y1 += stepy
+            if problem.walls.data[int(round(x1))][int(round(y1))]:
+                return True
+
+        return False
 
     
-
+    '''
+    BEGIN HEURISTIC FUNCTION
+    '''
     position, foodGrid = state
-    foodCount = getFoodCount()
+    foodPositions = foodGrid.asList()
+    foodCount = len(foodPositions)
     if foodCount < 1:
         return 0
 
-    foodPositions = problem.heuristicInfo.get("foodPositions")
-    if not foodPositions:
-        foodPositions = []
-        for column in range(len(foodGrid.data)):
-            for row in range(len(foodGrid.data[column])):
-                if foodGrid.data[column][row]:
-                    foodPositions.append((column, row))
 
+    '''
+    Here are examples using the other heuristic functions
+    Some of these have comments in README
+    '''
+    #primcost = prim(position, foodPositions)
+    #farthestDistance, farthestFood = findFarthestFood(position, foodPositions)
+    #closestDistance, closestFood = findClosestFood(position, foodPositions)
+    #farthestDistanceBetweenFood, farFromFarthest = findFarthestFood(farthestFood, foodPositions)
+    #if isBlockedByWall(position, farthestFood):
+    #    obstructed = 1
+    #else:
+    #    obstructed = 0
 
-    fdl = problem.heuristicInfo.get("foodDistanceLookup")
-    if not fdl:
-        createFoodLookupTable(foodPositions)
+    roundTripCost = foodToFoodTripCost(position, foodPositions)
 
-    #import pdb; pdb.set_trace()
-
-
-    primcost = prim(position, foodPositions)
-    foodCount = getFoodCount()
-    #for fpos in foodPositions:
-
-
-
-    return primcost
+    return roundTripCost
 
 
 
@@ -641,7 +660,8 @@ class ClosestDotSearchAgent(SearchAgent):
         walls = gameState.getWalls()
         problem = AnyFoodSearchProblem(gameState)
 
-        actions = search.breadthFirstSearch(problem)
+        actions = search.aStarSearch(problem)
+        return actions
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """

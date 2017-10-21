@@ -1,2 +1,0 @@
-# 2pac
-berkeley pacman 

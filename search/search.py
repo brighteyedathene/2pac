@@ -197,12 +197,12 @@ def updateIgnoreActions(self, (actions, item), priority):
     #   item must be a tuple: (list of actions, item)
     # [actions] will be ignored when comparing items
 
-    for index, (ppp, cc, (aa, ii)) in enumerate(self.heap):
-        if ii == item:
-            if ppp <= priority:
+    for index, (p, c, (a, i)) in enumerate(self.heap):
+        if i == item:
+            if p <= priority:
                 break
             del self.heap[index]
-            self.heap.append((priority, cc, (actions, item)))
+            self.heap.append((priority, c, (actions, item)))
             heapq.heapify(self.heap)
             break
     else:
