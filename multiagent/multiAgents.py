@@ -17,6 +17,7 @@ from game import Directions
 import random, util
 
 from game import Agent
+from pacman import SCARED_TIME
 
 class ReflexAgent(Agent):
     """
@@ -70,11 +71,82 @@ class ReflexAgent(Agent):
         successorGameState = currentGameState.generatePacmanSuccessor(action)
         newPos = successorGameState.getPacmanPosition()
         newFood = successorGameState.getFood()
+        newCapsules = successorGameState.getCapsules()
         newGhostStates = successorGameState.getGhostStates()
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
+        currentFood = currentGameState.getFood()
+        currentCapsules = currentGameState.getCapsules()
+
         "*** YOUR CODE HERE ***"
-        return successorGameState.getScore()
+        '''
+            things to consider
+            1)
+            ghost positions - how close
+            if scared_time > distance_to_ghost:
+                closer is better
+            else:
+                stay away
+
+            2)
+            food positions
+
+
+            3) 
+            score
+
+        '''
+
+        GHOSTMAX = 20
+        THREAT_RANGE = 6
+        CAPSULEMAX = 25
+        FOODMAX = 10
+
+        pointScore = successorGameState.getScore()
+
+        ghostScore = 0
+        closestGhostDistance = MinDistance(newPos, [g.getPosition() for g in newGhostStates])
+        for ghostState in newGhostStates:
+            ghost_distance = manhattanDistance(newPos, ghostState.getPosition())
+            scared_time = ghostState.scaredTimer
+            
+            if scared_time > ghost_distance:
+                ghostScore += GHOSTMAX - ghost_distance
+            
+            elif ghost_distance == 1:
+                ghostScore += -3*GHOSTMAX
+
+            elif ghost_distance < THREAT_RANGE:
+                ghostScore += min(0, -GHOSTMAX -ghost_distance)
+
+
+        capsuleScore = 0
+        if closestGhostDistance < SCARED_TIME:
+            #print "getting capsule vibes"
+            capsule_distance = MinDistance(newPos, currentCapsules)
+            capsuleScore = max(0, CAPSULEMAX - capsule_distance)
+
+
+        foodScore = 0
+        foodMinDistance = float('inf')
+        for food in currentGameState.getFood().asList():
+            food_distance = manhattanDistance(newPos, food)
+
+            if food_distance == 0:
+                foodScore = FOODMAX
+                break
+            elif food_distance < foodMinDistance:
+                foodScore   =  5 - food_distance
+                foodMinDistance = food_distance
+
+
+
+        #print "pointScore:", pointScore, " ghostScore:", ghostScore, " foodScore:", foodScore, " capsuleScore:", capsuleScore
+
+        score = pointScore + ghostScore + capsuleScore + foodScore 
+
+
+        return score
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -171,3 +243,21 @@ def betterEvaluationFunction(currentGameState):
 # Abbreviation
 better = betterEvaluationFunction
 
+
+
+'''Some extra functions for convenience
+'''
+
+def MinDistance(a, listofb, distanceFunction=manhattanDistance, returnTuple=False):
+    closest = None
+    minDistance = float('inf')
+    for b in listofb:
+        distance = distanceFunction(a, b)
+        if distance < minDistance:
+            minDistance = distance
+            closest = b
+
+    if returnTuple:
+        return b, minDistance
+    else:
+        return minDistance
