@@ -363,15 +363,23 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         #Expectimax(state)
         #    return argmax(action): MinValue(state->action)
         
+
+        DEBUG_actions = {}
+
         expectimax_action = None
         score = float('-inf')
 
         actions = gameState.getLegalActions(PACMAN)
         for action in actions:
             actionScore = ExpectiMiniMaxFunction(gameState.generateSuccessor(PACMAN, action), 1, self.depth)
+            DEBUG_actions[action] = actionScore
             if actionScore > score:
                 score = actionScore
                 expectimax_action = action
+
+        for action, score in DEBUG_actions.iteritems():
+            print action, score, ", ",
+        print ""
 
         return expectimax_action
 
@@ -384,6 +392,7 @@ def betterEvaluationFunction(currentGameState):
 
       DESCRIPTION: <write something here so we know what you did>
     """
+
     "*** YOUR CODE HERE ***"
     def EvaluateAction(currentGameState, action):
         successorGameState = currentGameState.generatePacmanSuccessor(action)
@@ -396,10 +405,19 @@ def betterEvaluationFunction(currentGameState):
         currentFood = currentGameState.getFood()
         currentCapsules = currentGameState.getCapsules()
 
-        GHOSTMAX = 20
-        THREAT_RANGE = 6
-        CAPSULEMAX = 25
-        FOODMAX = 10
+        MAX = 100
+        MIN = -100
+
+        GHOSTMAX = 1.2
+        THREAT_RANGE = 8
+        GHOST_GAMMA = 0.9
+        CAPSULEMAX = 4.5
+        FOODMAX = 1.5
+
+        if successorGameState.isWin():
+            return MAX
+        if successorGameState.isLose():
+            return MIN
 
         pointScore = successorGameState.getScore()
 
@@ -407,6 +425,8 @@ def betterEvaluationFunction(currentGameState):
         closestGhostDistance = MinDistance(newPos, [g.getPosition() for g in newGhostStates])
         for ghostState in newGhostStates:
             ghost_distance = manhattanDistance(newPos, ghostState.getPosition())
+            #ghost_distance = DistanceWithGamma(newPos, ghostState.getPosition(), GHOST_GAMMA)
+
             scared_time = ghostState.scaredTimer
             
             if scared_time > ghost_distance:
@@ -438,16 +458,20 @@ def betterEvaluationFunction(currentGameState):
                 foodScore   =  5 - food_distance
                 foodMinDistance = food_distance
 
-        #print "pointScore:", pointScore, " ghostScore:", ghostScore, " foodScore:", foodScore, " capsuleScore:", capsuleScore
-
         score = pointScore + ghostScore + capsuleScore + foodScore 
+
+        if action == Directions.STOP:
+            score -= pointScore
+
+        #print action, ":: pointScore:", pointScore, " ghostScore:", ghostScore, " foodScore:", foodScore, " capsuleScore:", capsuleScore, "total:", score
 
         return score
 
 
-
+    "*** Function begins here ***"
+    
     if currentGameState.isWin():
-        return float('inf')
+        return random.randrange(50, 100)
     if currentGameState.isLose():
         return float('-inf')
 
@@ -458,26 +482,57 @@ def betterEvaluationFunction(currentGameState):
     capsules = currentGameState.getCapsules()
     ghostStates = currentGameState.getGhostStates()
 
-    #import pdb;pdb.set_trace()
-    #ghostGamma = 0.8
-    #for ghost in ghostStates:
-    #    dman = manhattanDistance(ghost.getPosition(), pacmanPos)
-    #    dgamma = DistanceWithGamma(pacmanPos, ghost.getPosition(), ghostGamma)
-    #    print "manhattan:", dman, " dgamma", dgamma, " gamma", ghostGamma
 
-
-    '''Consider the available actions from this state
-    The best state is the one that produces the best successor
-    '''
-    bestScore = float('-inf')
+    # Consider the available actions from this state
+    # The best state is the one that produces the best successor
+    bestNextScore = 0
     actions = currentGameState.getLegalActions(PACMAN)
     for action in actions:
-        bestScore = max(bestScore, EvaluateAction(currentGameState, action))
+        bestNextScore = max(bestNextScore, EvaluateAction(currentGameState, action))
+
+    bestNextScore*=0.001
+
+    # food incentive
+    # need an extra incentive to get rid of the food
+    foodMax = float(len(food.data) * len(food.data[0]))
+    foodRemainingPenalty = float(-foodMax) / (len(food.asList()) + 1)
+    #foodRemainingPenalty = len(food.asList()) / float(foodMax) 
+    #foodRemainingPenalty = (foodMax - len(food.asList()) )/ foodMax
+    foodRemainingPenalty *= -1
+
+    foodDistanceMax = MaxDistance(pacmanPos, food.asList())
+    foodDistanceScore = 0
+    for dot in food.asList():
+        foodDistanceScore += manhattanDistance(pacmanPos, dot)
+    foodDistanceScore = foodDistanceScore / (max(1, foodDistanceMax * len(food.asList())))
 
 
-    return bestScore
-    util.raiseNotDefined()
+    currentScore = currentGameState.getScore()
+    currentScore *= 0.01
 
+    #score = currentScore + foodRemainingPenalty + foodDistanceScore + bestNextScore
+    #print pacmanPos, "points:", currentScore, " foodpenalty:", foodRemainingPenalty, " bestaction:", bestNextScore, " total", score
+
+    #import pdb;pdb.set_trace()
+
+    #foodRemaining = len(food.asList())
+    scaredGhostPositions = [ghost.getPosition() for ghost in ghostStates if ghost.scaredTimer > 0]
+
+    roundTripScore = FoodToFoodTripCost(pacmanPos, food.asList() + capsules + scaredGhostPositions)
+    roundTripScore *= -0.01
+
+
+
+
+    score = roundTripScore + foodRemainingPenalty + bestNextScore
+    score += random.random()*0.01 if score == 0 else random.random()/(score*score)
+
+
+    #print pacmanPos, "foodremaining:", foodRemainingPenalty, "bestnext", bestNextScore, "score:", score
+    #import pdb;pdb.set_trace()
+
+
+    return score
 # Abbreviation
 better = betterEvaluationFunction
 
@@ -496,9 +551,24 @@ def MinDistance(a, listofb, distanceFunction=manhattanDistance, returnTuple=Fals
             closest = b
 
     if returnTuple:
-        return b, minDistance
+        return closest, minDistance
     else:
         return minDistance
+
+def MaxDistance(a, listofb, distanceFunction=manhattanDistance, returnTuple=False):
+    farthest = None
+    maxDistance = 0
+    for b in listofb:
+        distance = distanceFunction(a, b)
+        if distance > maxDistance:
+            maxDistance = distance
+            farthest = b
+
+    if returnTuple:
+        return farthest, maxDistance
+    else:
+        return maxDistance
+
 
 def DistanceWithGamma(a, b, gamma):
     real_distance = manhattanDistance(a,b)
@@ -508,3 +578,37 @@ def DistanceWithGamma(a, b, gamma):
         gamma *= gamma
 
     return falloff_distance
+
+
+def FoodToFoodTripCost(position, foodPositions):
+    """This is my final heuristic function
+    
+    Starting at pacman's position (position), this 
+    function carves a path through all food tiles, 
+    choosing the closest unvisited tile every time.
+
+    For each step, the manhattam distance is added
+    to a running total, (hcost).
+
+    In order to keep the heuristic cost from getting
+    too high, the length of the largest move (freeMove)
+    will be subtracted from (hcost) at the end.
+    """
+    subgoals = list(foodPositions)
+    hcost = 0 # running total cost
+    freeMove = 0 # i will allow the largest move for free...
+
+    #... unless there is only one food tile
+    if len(subgoals) < 2:
+        return util.manhattanDistance(position, subgoals[0])
+
+    while subgoals:
+        closest, distance = MinDistance(position, subgoals, returnTuple=True)
+        hcost += distance
+        position = closest
+        subgoals.remove(closest)
+        if freeMove < distance:
+            freeMove = distance
+
+    #hcost -= freeMove
+    return hcost
